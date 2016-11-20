@@ -92,7 +92,8 @@ def futureRealTrades(api_key,secretkey):
 
 def on_open(self):
     #subscribe okcoin.com spot ticker
-    self.send("{'event':'addChannel','channel':'ok_sub_spotusd_btc_ticker','binary':'true'}")
+    # self.send("{'event':'addChannel','channel':'ok_sub_spotusd_btc_ticker','binary':'true'}")
+    self.send("{'event':'addChannel','channel':'ok_sub_spotcny_btc_depth_20','binary':'true'}")
 
     #subscribe okcoin.com future this_week ticker
     #self.send("{'event':'addChannel','channel':'ok_sub_futureusd_btc_ticker_this_week','binary':'true'}")
