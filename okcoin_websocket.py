@@ -6,8 +6,13 @@ import hashlib
 import zlib
 import base64
 
+import pymongo
+
 api_key=''
 secret_key = ""
+tickers = None
+depths = None
+
 #business
 def buildMySign(params,secretKey):
     sign = ''
@@ -92,7 +97,7 @@ def futureRealTrades(api_key,secretkey):
 
 def on_open(self):
     #subscribe okcoin.com spot ticker
-    # self.send("{'event':'addChannel','channel':'ok_sub_spotusd_btc_ticker','binary':'true'}")
+    self.send("{'event':'addChannel','channel':'ok_sub_spotcny_btc_ticker','binary':'true'}")
     self.send("{'event':'addChannel','channel':'ok_sub_spotcny_btc_depth_20','binary':'true'}")
 
     #subscribe okcoin.com future this_week ticker
@@ -129,6 +134,16 @@ def on_open(self):
 def on_message(self,evt):
     data = inflate(evt) #data decompress
     print (data)
+
+    for item in json.loads(data.decode('utf-8')):
+        if item['channel'] == 'ok_sub_spotcny_btc_ticker':
+            collection = tickers
+        else:
+            collection = depths
+
+        if item['data']:
+            collection.insert_one(item['data'])
+
 def inflate(data):
     decompress = zlib.decompressobj(
             -zlib.MAX_WBITS  # see above
@@ -144,9 +159,14 @@ def on_close(self,evt):
     print ('DISCONNECT')
 
 if __name__ == "__main__":
-    url = "wss://real.okcoin.com:10440/websocket/okcoinapi"      #if okcoin.cn  change url wss://real.okcoin.cn:10440/websocket/okcoinapi
+    url = "wss://real.okcoin.cn:10440/websocket/okcoinapi"      #if okcoin.cn  change url wss://real.okcoin.cn:10440/websocket/okcoinapi
     api_key='your api_key which you apply'
     secret_key = "your secret_key which you apply"
+
+    db_client = pymongo.MongoClient('localhost', 27017)
+    db = db_client.okdeep
+    tickers = db.tickers
+    depths = db.depths
 
     websocket.enableTrace(False)
     if len(sys.argv) < 2:
