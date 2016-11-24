@@ -151,9 +151,6 @@ def on_message(self, evt):
     print(data)
 
     items = json.loads(data.decode('utf-8'))
-    # print len(items)
-    # if len(items) == 3:
-    x = {'_id': items[0]['data']['timestamp']}
     for item in items:
         item_data = item['data']
         if item_data:
@@ -166,11 +163,12 @@ def on_message(self, evt):
             elif item['channel'] == 'ok_sub_spotcny_btc_depth_20':
                 depths.insert_one(item_data)
             elif item['channel'] == 'ok_sub_spotcny_btc_trades':
-                strdate = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(' ')[0]
-                strtime = item_data[0][3]
-                dt = datetime.datetime.strptime('{} {}'.format(strdate, strtime), "%Y-%m-%d %H:%M:%S")
-                tick = int(time.mktime(dt.timetuple()))
-                item['_id'] = tick
+                # strdate = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(' ')[0]
+                # strtime = item_data[0][3]
+                # dt = datetime.datetime.strptime('{} {}'.format(strdate, strtime), "%Y-%m-%d %H:%M:%S")
+                # tick = int(time.mktime(dt.timetuple()))
+                # item['_id'] = tick
+                item['_id'] = int(time.time() * 1000)  # 这里的timestamp是收到数据时的本地时间，需要用数据里的时间
                 del item['channel']
                 trades.insert_one(item)
 
