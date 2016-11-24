@@ -1,17 +1,19 @@
-import websocket
-import time
-import sys
-import json
+import datetime
 import hashlib
+import json
+import sys
+import time
 import zlib
-import base64
 
 import pymongo
+
+import websocket
 
 api_key = ''
 secret_key = ""
 tickers = None
 depths = None
+trades = None
 
 
 # business
@@ -109,6 +111,7 @@ def on_open(self):
     # subscribe okcoin.com spot ticker
     self.send("{'event':'addChannel','channel':'ok_sub_spotcny_btc_ticker','binary':'true'}")
     self.send("{'event':'addChannel','channel':'ok_sub_spotcny_btc_depth_20','binary':'true'}")
+    self.send("{'event':'addChannel','channel':'ok_sub_spotcny_btc_trades','binary':'true'}")
 
     # subscribe okcoin.com future this_week ticker
     # self.send("{'event':'addChannel','channel':'ok_sub_futureusd_btc_ticker_this_week','binary':'true'}")
@@ -148,17 +151,28 @@ def on_message(self, evt):
     print(data)
 
     items = json.loads(data.decode('utf-8'))
-    if len(items) == 2:
-        for item in items:
-            if item['channel'] == 'ok_sub_spotcny_btc_ticker':
-                collection = tickers
-            else:
-                collection = depths
+    # print len(items)
+    # if len(items) == 3:
+    x = {'_id': items[0]['data']['timestamp']}
+    for item in items:
+        item_data = item['data']
+        if item_data:
+            if item['channel'] != 'ok_sub_spotcny_btc_trades':
+                item_data['_id'] = item_data['timestamp']
+                del item_data['timestamp']
 
-            data_item = item['data']
-            data_item['_id'] = data_item['timestamp']
-            del data_item['timestamp']
-            collection.insert_one(data_item)
+            if item['channel'] == 'ok_sub_spotcny_btc_ticker':
+                tickers.insert_one(item_data)
+            elif item['channel'] == 'ok_sub_spotcny_btc_depth_20':
+                depths.insert_one(item_data)
+            elif item['channel'] == 'ok_sub_spotcny_btc_trades':
+                strdate = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(' ')[0]
+                strtime = item_data[0][3]
+                dt = datetime.datetime.strptime('{} {}'.format(strdate, strtime), "%Y-%m-%d %H:%M:%S")
+                tick = int(time.mktime(dt.timetuple()))
+                item['_id'] = tick
+                del item['channel']
+                trades.insert_one(item)
 
 
 def inflate(data):
@@ -188,8 +202,14 @@ if __name__ == "__main__":
 
     tickers = db.tickers
     tickers.remove()
+
     depths = db.depths
     depths.remove()
+
+    trades = db.trades
+    trades.remove()
+
+    db.okcoin.drop()
 
     websocket.enableTrace(False)
     if len(sys.argv) < 2:
